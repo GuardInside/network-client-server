@@ -5,6 +5,7 @@
 #include <QString>
 #include <QTextStream>
 #include <QDateTime>
+#include <QDataStream>
 
 class Client: public ReadableError {
 public:
@@ -82,23 +83,27 @@ public:
 protected:
 	virtual bool read(QString *line)
 	{
-		QTextStream stream(line, QIODevice::WriteOnly);
-		stream.setCodec("UTF-8");
+		QByteArray buffer;
+		QDataStream stream(&buffer, QIODevice::WriteOnly);
 
-		/* Низкоуровневая часть */
+		/* Низкоуровневый код */
 		int n = 0;
 		char recvline[MAXLINE + 1];
 
-		while( (n = ::read(socket_, recvline, MAXLINE)) > 0 ) {
-			recvline[n] = 0;
-			stream << QString::fromUtf8(recvline, n);
-		}
+		while( (n = ::read(socket_, recvline, MAXLINE)) > 0 )
+			if( stream.writeRawData(recvline, n) != n ) {
+				setErrorString("QByteArray write error");
+				return false;
+			}
 
 		if( n < 0 ) {
 			setErrorString("read error");
 			return false;
 		}
 
+//		qDebug() << "Loop counter read: " << lpcnt;
+
+		*line = QString::fromUtf8(buffer);
 		return true;
 	}
 

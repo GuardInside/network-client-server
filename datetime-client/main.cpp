@@ -7,7 +7,7 @@ int main(int argc, char **argv)
 	QTextStream errostream(stderr, QIODevice::WriteOnly);
 	QScopedPointer<DataTimeClinet> dtClient( new DTClient );
 
-	QString ipaddr = "127.0.0.1", port = "19";
+	QString ipaddr = "127.0.0.1", port = "23";
 	QDateTime dateTime;
 
 	if( argc > 1 )

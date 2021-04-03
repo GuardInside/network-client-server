@@ -6,10 +6,10 @@ int main(int, char **)
 	QTextStream errostream(stderr, QIODevice::WriteOnly);
 	QScopedPointer<Server> dtServer( new DTServer( new DateTimeHandler ) );
 
-	if( !dtServer->bind(19) )
+	if( !dtServer->listen(23) )
 		goto error;
 
-	if( !dtServer->listen() )
+	if( !dtServer->run() )
 		goto error;
 
 	return 0;

@@ -4,7 +4,9 @@
 #include "ReadableError.h"
 #include <QString>
 #include <QTextStream>
+#include <QDataStream>
 #include <QDateTime>
+#include <iterator>
 
 class Handler {
 public:
@@ -32,10 +34,10 @@ protected:
 class Server: public ReadableError {
 public:
 	/// Задать порт сервера
-	virtual bool bind(uint16_t) = 0;
+	virtual bool listen(uint16_t) = 0;
 
 	/// Прослушивать порт
-	virtual bool listen() = 0;
+	virtual bool run() = 0;
 
 	/// Сброс состояния в исходное
 	virtual void reset() = 0;
@@ -49,7 +51,7 @@ public:
 	DTServer(Handler *handler)
 		: handler_( handler ) { reset(); }
 
-	bool bind(uint16_t port) override {
+	bool listen(uint16_t port) override {
 		if( (listenSocket_ = socket(AF_INET, SOCK_STREAM, 0)) <= 0 ) {
 			setErrorString("socket error");
 			return false;
@@ -69,15 +71,15 @@ public:
 			return false;
 		}
 
-		return true;
-	}
-
-	bool listen() override {
 		if( ::listen(listenSocket_, SOMAXCONN) < 0 ) {
 			setErrorString("listen error");
 			return false;
 		}
 
+		return true;
+	}
+
+	bool run() override {
 		while( true ) {
 			if( (connectedSocket_ = accept(listenSocket_, (sockaddr*)0, 0)) <= 0 ) {
 				setErrorString("accept error");
@@ -105,9 +107,16 @@ public:
 protected:
 	/// Записать строку в сокет и закрыть его
 	virtual bool write(const QString &line) {
-		const auto buffer = line.toUtf8();
+		const int segmentSize = 8;
+		const char *trline = line.toUtf8().data();
+		const char *curpos = trline;
+		int n = 0, size = line.toUtf8().size();
 
-		if( ::write(connectedSocket_, buffer.data(), buffer.size()) < 0 ) {
+		while( (n = ::write(connectedSocket_, curpos += n, segmentSize)) > 0 )
+			if( std::distance(curpos, trline + size) <= 0 )
+				break;
+
+		if( n < 0) {
 			setErrorString("write error");
 			return false;
 		}
